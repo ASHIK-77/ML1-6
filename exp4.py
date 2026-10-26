@@ -1,0 +1,86 @@
+# EXPERIMENT 4
+# NAIVE BAYES CLASSIFICATION USING THE 20 NEWSGROUPS DATASET
+
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.datasets import fetch_20newsgroups
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.naive_bayes import MultinomialNB, BernoulliNB
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+
+# Load training and testing data
+train_data = fetch_20newsgroups(
+    subset="train", remove=("headers", "footers", "quotes")
+)
+test_data = fetch_20newsgroups(
+    subset="test", remove=("headers", "footers", "quotes")
+)
+
+X_train_text = train_data.data
+y_train = train_data.target
+X_test_text = test_data.data
+y_test = test_data.target
+class_names = train_data.target_names
+
+print("Training documents:", len(X_train_text))
+print("Testing documents:", len(X_test_text))
+print("Number of classes:", len(class_names))
+
+# Word-count features for Multinomial Naive Bayes
+vectorizer = CountVectorizer(stop_words="english", min_df=2)
+X_train = vectorizer.fit_transform(X_train_text)
+X_test = vectorizer.transform(X_test_text)
+print("Training feature matrix:", X_train.shape)
+print("Testing feature matrix:", X_test.shape)
+
+mnb = MultinomialNB()
+mnb.fit(X_train, y_train)
+y_pred_mnb = mnb.predict(X_test)
+
+# Binary word-presence features for Bernoulli Naive Bayes
+binary_vectorizer = CountVectorizer(
+    stop_words="english", min_df=2, binary=True
+)
+X_train_binary = binary_vectorizer.fit_transform(X_train_text)
+X_test_binary = binary_vectorizer.transform(X_test_text)
+
+bnb = BernoulliNB()
+bnb.fit(X_train_binary, y_train)
+y_pred_bnb = bnb.predict(X_test_binary)
+
+# Evaluate both classifiers using macro averages
+results = pd.DataFrame({
+    "Model": ["Multinomial NB", "Bernoulli NB"],
+    "Accuracy": [
+        accuracy_score(y_test, y_pred_mnb),
+        accuracy_score(y_test, y_pred_bnb)
+    ],
+    "Precision": [
+        precision_score(y_test, y_pred_mnb, average="macro", zero_division=0),
+        precision_score(y_test, y_pred_bnb, average="macro", zero_division=0)
+    ],
+    "Recall": [
+        recall_score(y_test, y_pred_mnb, average="macro", zero_division=0),
+        recall_score(y_test, y_pred_bnb, average="macro", zero_division=0)
+    ],
+    "F1-Score": [
+        f1_score(y_test, y_pred_mnb, average="macro", zero_division=0),
+        f1_score(y_test, y_pred_bnb, average="macro", zero_division=0)
+    ]
+})
+
+print("\nPerformance Comparison")
+print(results.to_string(index=False))
+
+ax = results.set_index("Model").plot(kind="bar", figsize=(11, 6))
+plt.title("Multinomial NB vs Bernoulli NB")
+plt.xlabel("Model")
+plt.ylabel("Score")
+plt.ylim(0, 1.02)
+plt.xticks(rotation=0)
+plt.legend(title="Metric")
+plt.grid(axis="y", alpha=0.3)
+for container in ax.containers:
+    ax.bar_label(container, fmt="%.3f", padding=2)
+plt.tight_layout()
+plt.show()
